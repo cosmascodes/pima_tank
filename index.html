@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style/dashboard.css">
+    <script type="text/javascript" src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+	<script type="text/javascript" src="https://cdn.fusioncharts.com/fusioncharts/latest/themes/fusioncharts.theme.fusion.js"></script>
+	
+</head>
+<body>
+    <main>
+        
+        <section class="sidenav">
+            <h1>Pump IoT</h1>
+            <div>
+                <ul>
+                    <li id="active">Overview</li>
+                    <li>Notifications</li>
+                    <li>Reports</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="main">
+            <header>
+                <h1>Overview</h1>
+            </header>
+            <div class="chart">
+                <div id="chart-container">FusionCharts XT will load here!</div>
+                <canvas id="myChart"></canvas>
+            </div>
+        </section>
+        <section id="user_det">
+            <div id="details">
+                <h3>Pump Properties</h3>
+                <ul>
+                    <li>Voltage</li>
+                    <li>Current</li>
+                    <li>Speed</li>
+
+                </ul>
+            </div>
+            <div id="extra">
+                <h3>Tank Activity</h3>
+                <ul>
+                    <h5>Today</h5>
+                    <li>Water present</li>
+                    <li>Water Used</li>
+                    <h5>Yesterday</h5>
+                    <li>Water present</li>
+                    <li>Water Used</li>
+                </ul>
+            </div>
+        </section>
+    </main>    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/doughnut.js"></script>
+    <script src="js/cylinder.js"></script>
+
+    
+
+<script>
+    
+    var ajax = new XMLHttpRequest();
+    ajax.open("GET", "data/read_data.php", true);
+    ajax.send();
+    
+    ajax.onreadystatechange = function() {
+        let usage;
+        if (this.readyState == 4 && this.status == 200) {
+            var data = JSON.parse(this.responseText);
+
+            for(var a = 0; a < data.length; a++) {
+                usage = data[a].usage_val;
+            }
+
+            // DOUGHNUT CHART
+            const ctx = document.getElementById('myChart');
+
+            let fulltank= 80;
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        'present water',
+                        'Used water'
+                    ],
+                    datasets: [{
+                        data: [fulltank-usage, usage],
+                        backgroundColor: [
+                        'rgb(90, 123, 253)',              
+                        'rgb(190, 206, 255)'
+                        ],
+                        hoverOffset: 3
+                        
+                    }]
+                }
+            });
+
+
+            // CYLINDER CHART
+		FusionCharts.ready(function(){
+			var chartObj = new FusionCharts({
+                type: 'cylinder',
+                dataFormat: 'json',
+                renderAt: 'chart-container',
+                width: '200',
+                height: '350',
+                dataSource: {
+                    "chart": {
+                        "theme": "fusion",
+                        "caption": "Diesel Level in Generator",
+                        "subcaption": "Bakersfield Central",
+                        "lowerLimit": "0",
+                        "upperLimit": fulltank,
+                        "lowerLimitDisplay": "Empty",
+                        "upperLimitDisplay": "Full",
+                        "numberSuffix": " ltrs",
+                        "showValue": "1",
+                        "chartBottomMargin": "40",
+                        "showValue": "0",
+                        "cylFillColor": "#5a7bfd"
+                    },
+                    "value": "110",
+                    "annotations": {
+                        "origw": "400",
+                        "origh": "190",
+                        "autoscale": "1",
+                        "groups": [{
+                            "id": "range",
+                            "items": [{
+                                "id": "rangeBg",
+                                "type": "rectangle",
+                                "x": "$canvasCenterX-45",
+                                "y": "$chartEndY-30",
+                                "tox": "$canvasCenterX +45",
+                                "toy": "$chartEndY-75",
+                                "fillcolor": "#6caa03"
+                            }, {
+                                "id": "rangeText",
+                                "type": "Text",
+                                "fontSize": "11",
+                                "fillcolor": "#333333",
+                                "text": "80 ltrs",
+                                "x": "$chartCenterX-45",
+                                "y": "$chartEndY-50"
+                            }]
+                        }]
+                    }
+
+                },
+                "events": {
+                    "rendered": function(evtObj, argObj) {
+                        var fuelVolume = fulltank;
+                        evtObj.sender.chartInterval = setInterval(function() {
+                            (fuelVolume < 10) ? (fuelVolume = 80) : "";
+                            var consVolume = fuelVolume - (Math.floor(Math.random() * 3));
+                            evtObj.sender.feedData && evtObj.sender.feedData("&value=" + consVolume);
+                            fuelVolume = consVolume;
+                        }, 200);
+                    },
+                    //Using real time update event to update the annotation
+                    //showing available volume of Diesel
+                    "realTimeUpdateComplete": function(evt, arg) {
+                        var annotations = evt.sender.annotations,
+                            dataVal = evt.sender.getData(),
+                            colorVal = (dataVal >= 70) ? "#6caa03" : ((dataVal <= 35) ? "#e44b02" : "#f8bd1b");
+                        //Updating value
+                        annotations && annotations.update('rangeText', {
+                            "text": dataVal + " ltrs"
+                        });
+                        //Changing background color as per value
+                        annotations && annotations.update('rangeBg', {
+                            "fillcolor": colorVal
+                        });
+
+                    },
+                    "disposed": function(evt, arg) {
+                        clearInterval(evt.sender.chartInterval);
+                    }
+                }
+            }
+            );
+			chartObj.render();
+		});
+
+        }
+        
+    };
+    
+
+</script>
+</body>
+</html>
